@@ -5,6 +5,7 @@ import telebot
 from threading import Thread
 from flask import Flask
 
+# 1. Запуск Flask-сервера для Render
 app = Flask('')
 
 @app.route('/')
@@ -15,6 +16,7 @@ def run_web_server():
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
 
+# 2. Настройки (Переменные окружения)
 TOKEN = os.environ.get("TELEGRAM_TOKEN", "ТВОЙ_ТОКЕН")
 CHAT_ID = os.environ.get("CHAT_ID", "ТВОЙ_ID")
 
@@ -22,6 +24,7 @@ bot = telebot.TeleBot(TOKEN)
 BINANCE_API_URL = "https://api.binance.com/api/v3/depth"
 VOLUME_THRESHOLD = 50.0 
 
+# 3. Сканирование стакана
 def check_order_book():
     try:
         params = {"symbol": "PAXGUSDT", "limit": 100}
@@ -44,6 +47,7 @@ def check_order_book():
         print(f"Ошибка при запросе к стакану: {e}")
         return []
 
+# 4. Фоновый мониторинг рынка
 def monitor_market():
     time.sleep(5)
     try:
@@ -62,6 +66,7 @@ def monitor_market():
             print(f"Ошибка в цикле мониторинга: {e}")
             time.sleep(20)
 
+# 5. Обработка команд Телеграм
 @bot.message_handler(commands=['start', 'status'])
 def send_status(message):
     try:
@@ -83,7 +88,11 @@ def send_top(message):
     else:
         bot.reply_to(message, "🔍 Прямо сейчас крупных плит (от 50 PAXG) в топ-50 стакана не найдено. Рынок спокойный.")
 
+# 6. Главная точка запуска
 if __name__ == "__main__":
+    # Запускаем Flask для Render, чтобы не рубил за порты
     Thread(target=run_web_server, daemon=True).start()
+    # Запускаем мониторинг рынка
     Thread(target=monitor_market, daemon=True).start()
+    # Запускаем прием команд в телеге
     bot.infinity_polling()
