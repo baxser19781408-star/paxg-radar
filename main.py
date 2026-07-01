@@ -5,7 +5,6 @@ import telebot
 from threading import Thread
 from flask import Flask
 
-# Твой новый токен
 TOKEN = "8934915148:AAFCG8tLzs_kkYaolTqmxcIX7xRKUj2mQCI"
 CHAT_ID = "478724812"
 
@@ -14,41 +13,20 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "PAXG Radar Online"
+    return "Bot Online"
 
-def run_web_server():
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
-
-def monitor_market():
-    # Цикл мониторинга
-    while True:
-        try:
-            # Запрос к стакану Binance
-            res = requests.get("https://api.binance.com/api/v3/depth?symbol=PAXGUSDT&limit=20", timeout=10)
-            if res.status_code == 200:
-                data = res.json()
-                bids = data.get('bids', [])
-                
-                # Ищем плиты > 5000$
-                for price, qty in bids:
-                    total_usd = float(price) * float(qty)
-                    if total_usd >= 5000:
-                        bot.send_message(CHAT_ID, f"⚠️ КРУПНАЯ ПЛИТА:\nЦена: {price}\nОбъем: {qty} PAXG\nСумма: {total_usd:.0f}$")
-                        time.sleep(10) # Чтобы не спамить одной и той же плитой
-            
-        except Exception as e:
-            print(f"Ошибка мониторинга: {e}")
-        
-        time.sleep(30) # Пауза между проверками
-
-@bot.message_handler(commands=['status'])
-def send_status(message):
-    bot.reply_to(message, "✅ Радар работает и мониторит Binance!")
+# Функция для принудительной отправки данных
+def test_connection():
+    time.sleep(10) # Ждем старта
+    try:
+        res = requests.get("https://api.binance.com/api/v3/depth?symbol=PAXGUSDT&limit=5", timeout=10)
+        data = res.json()
+        bids = data.get('bids', [])
+        bot.send_message(CHAT_ID, f"📡 ТЕСТ: Получено заявок {len(bids)}. Первая: {bids[0]}")
+    except Exception as e:
+        bot.send_message(CHAT_ID, f"Ошибка теста: {str(e)}")
 
 if __name__ == "__main__":
-    # Запуск сервера
-    Thread(target=run_web_server, daemon=True).start()
-    # Запуск мониторинга
-    Thread(target=monitor_market, daemon=True).start()
-    # Запуск бота
-    bot.infinity_polling(none_stop=True)
+    Thread(target=lambda: app.run(host='0.0.0.0', port=10000), daemon=True).start()
+    Thread(target=test_connection, daemon=True).start()
+    bot.infinity_polling()
