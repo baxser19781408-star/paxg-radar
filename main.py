@@ -13,20 +13,30 @@ app = Flask('')
 
 @app.route('/')
 def home():
-    return "Bot Online"
+    return "PAXG Radar Online"
 
-# Функция для принудительной отправки данных
-def test_connection():
-    time.sleep(10) # Ждем старта
-    try:
-        res = requests.get("https://api.binance.com/api/v3/depth?symbol=PAXGUSDT&limit=5", timeout=10)
-        data = res.json()
-        bids = data.get('bids', [])
-        bot.send_message(CHAT_ID, f"📡 ТЕСТ: Получено заявок {len(bids)}. Первая: {bids[0]}")
-    except Exception as e:
-        bot.send_message(CHAT_ID, f"Ошибка теста: {str(e)}")
+def run_web_server():
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
+
+def diagnostic_mode():
+    while True:
+        try:
+            # Делаем запрос к публичному API
+            res = requests.get("https://api.binance.com/api/v3/depth?symbol=PAXGUSDT&limit=5", timeout=10)
+            data = res.json()
+            
+            # Проверяем, есть ли данные в стакане
+            bids = data.get('bids', [])
+            count = len(bids)
+            
+            # Отправляем отчет в Telegram
+            bot.send_message(CHAT_ID, f"📡 Диагностика: Получено заявок {count}. Первая: {bids[0] if count > 0 else 'пусто'}")
+        except Exception as e:
+            bot.send_message(CHAT_ID, f"📡 Диагностика ОШИБКА: {str(e)}")
+        
+        time.sleep(60) # Раз в минуту
 
 if __name__ == "__main__":
-    Thread(target=lambda: app.run(host='0.0.0.0', port=10000), daemon=True).start()
-    Thread(target=test_connection, daemon=True).start()
-    bot.infinity_polling()
+    Thread(target=run_web_server, daemon=True).start()
+    Thread(target=diagnostic_mode, daemon=True).start()
+    bot.infinity_polling(none_stop=True)
